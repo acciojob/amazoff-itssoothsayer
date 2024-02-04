@@ -1,104 +1,109 @@
 package com.driver;
 
-import io.swagger.models.auth.In;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.*;
 
 @Service
 public class OrderService {
-
-    OrderRepository orderRepository=new OrderRepository();
-
+    //    @Autowired
+    OrderRepository orderRepository = new OrderRepository();
 
     public void addOrder(Order order){
         orderRepository.addOrder(order);
     }
 
-    public void addPartner(String partnerId){
-        orderRepository.addPartner(partnerId);
+    public void addPartner(String pId){
+        DeliveryPartner partner = new DeliveryPartner(pId);
+        orderRepository.addPartner(partner);
     }
 
-
-    public void addOrderPartnerPair(String orderId, String partnerId){
-        orderRepository.addOrderPartnerPair(orderId, partnerId);
+    public void assignOrder(String pId, String oId){
+        orderRepository.assignOrder(pId, oId);
     }
 
-    public Order getOrderById(String orderId){
-        Order order = orderRepository.getOrderById(orderId);
-        return order;
+    public Order getOrderById(String oId){
+        return orderRepository.getOrderById(oId);
     }
 
-    public DeliveryPartner getPartnerById(String partnerId){
-        DeliveryPartner partner = orderRepository.getPartnerById(partnerId);
-        return partner;
+    public DeliveryPartner getPartnerById(String pId){
+        return orderRepository.getPartnerById(pId);
     }
 
-    public int getOrderCountByPartnerId(String partnerId){
-        int orderCount = orderRepository.getOrderCountByPartnerId(partnerId);
-        return orderCount;
+    public int numOfOrdersAssignedToPartner(String pId){
+        return orderRepository.numOfOrdersAssignedToPartner(pId);
     }
 
-    public List<String> getOrdersByPartnerId(String partnerId){
-        List<String> list = orderRepository.getOrdersByPartnerId(partnerId);
-        return list;
-
+    public List<String> getListOfOrdersByPartner(String pId){
+        return orderRepository.getListOfOrdersByPartner(pId);
     }
 
     public List<String> getAllOrders(){
-        List<String> list = orderRepository.getAllOrders();
-        return list;
+        return orderRepository.getAllOrders();
     }
 
     public int getCountOfUnassignedOrders(){
-        int count = orderRepository.getCountOfUnassignedOrders();
-        return count;
+        return orderRepository.getCountOfUnassignedOrders();
     }
 
-    public int getOrdersLeftAfterGivenTimeByPartnerId(String time, String partnerId){
-//        String s1 = String.valueOf(time.charAt(0) + time.charAt(1));
-//        String s2 = String.valueOf(time.charAt(3) + time.charAt(4));
-//        int hh = Integer.valueOf(s1);
-//        int mm = Integer.valueOf(s2);
-
-        String arr[] = time.split(":");
-        int hh = Integer.parseInt(arr[0]);
-        int mm = Integer.parseInt(arr[1]);
-
-        int timeInt = (hh*60)+mm;
-
-        int count = orderRepository.getOrdersLeftAfterGivenTimeByPartnerId(timeInt, partnerId);
-
-        return count;
-    }
-
-    public String getLastDeliveryTimeByPartnerId(String partnerId){
-
-        int timeInt = orderRepository.getLastDeliveryTimeByPartnerId(partnerId);
-        int hh = timeInt/60;
-        int mm = timeInt%60;
-        String HH = String.valueOf(hh);
-        if(HH.length()==1){
-            HH = '0' + HH;
+    public int getCountOfUndeliveredOrders(String pId, String time){
+        if(orderRepository.getListOfOrdersByPartner(pId) == null || time.length() == 0){
+            return 0;
         }
-        String MM = String.valueOf(mm);
-        if(MM.length()==1){
-            MM = '0'+MM;
+        // convert time from string to integer
+        String hrs = time.substring(0, 2);
+        String mnts = time.substring(3);
+        int maxTime = Integer.parseInt(hrs)*60 + Integer.parseInt(mnts);
+
+        // get list of all orders from partner id
+        List<String> partnerOrders = orderRepository.getListOfOrdersByPartner(pId);
+        int unDeliveredOrders = 0;
+
+        for(String oId: partnerOrders){
+            // get order by id then get delivery time of each order
+            Order order = orderRepository.getOrderById(oId);
+            if(order.getDeliveryTime() > maxTime){
+                unDeliveredOrders++;
+            }
         }
 
-        String time = HH + ":" + MM;
-        return time;
+        return unDeliveredOrders;
     }
 
+    public String getLastDeliveryTime(String pId){
+        if(orderRepository.getListOfOrdersByPartner(pId) == null){
+            return null;
+        }
+        // get order list of that partner
+        List<String> partnerOrders = orderRepository.getListOfOrdersByPartner(pId);
 
-    public void deletePartnerById(String partnerId){
+        int lastDeliveryTime = Integer.MIN_VALUE;
 
-        orderRepository.deletePartnerById(partnerId);
+        for(String oId: partnerOrders){
+            // get order and then get delivery time of that order
+            Order order = orderRepository.getOrderById(oId);
+            int deliveryTime = order.getDeliveryTime();
+            if(deliveryTime > lastDeliveryTime){
+                lastDeliveryTime = deliveryTime;
+            }
+        }
+
+        // now convert this time from int to string
+        int h = lastDeliveryTime/60;
+        int m = lastDeliveryTime - (h*60);
+
+        String hrs = String.format("%02d", h);
+        String mnts = String.format("%02d", m);
+
+        return (hrs + ":" + mnts);
     }
 
-    public void deleteOrderById(String orderId){
+    public void deletePartner(String pId){
+        orderRepository.deletePartner(pId);
+    }
 
-        orderRepository.deleteOrderById(orderId);
+    public void deleteOrder(String oId){
+        orderRepository.deleteOrder(oId);
     }
 }
